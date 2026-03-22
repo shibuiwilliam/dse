@@ -1,0 +1,73 @@
+[project]
+name = "dse"
+version = "0.1.0"
+description = "Dynamic Search Engine for Agentic Memory"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.34.0",
+    "pydantic>=2.10.0",
+    "pydantic-settings>=2.7.0",
+    "python-dotenv>=1.0.0",
+    "google-genai>=1.10.0",
+    "elasticsearch[async]>=8.17.0,<9.0.0",
+    "google-cloud-storage>=2.18.0",
+    "boto3>=1.35.0",
+    "neo4j>=5.26.0",
+    "redis[hiredis]>=5.2.0",
+    "temporalio>=1.7.0",
+    "aiokafka>=0.12.0",
+    "structlog>=24.4.0",
+    "google-adk>=1.0.0",
+]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.13.0",
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "pytest-mock>=3.14.0",
+    "pytest-cov>=6.0.0",
+    "ruff>=0.8.0",
+    "httpx>=0.28.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/dse"]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+src = ["src"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "ANN", "B", "A", "SIM"]
+ignore = ["ANN401", "E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["dse"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+plugins = ["pydantic.mypy"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.coverage.run]
+source = ["src/dse"]
+omit = ["*/tests/*"]
+
+[tool.coverage.report]
+fail_under = 45
+show_missing = true

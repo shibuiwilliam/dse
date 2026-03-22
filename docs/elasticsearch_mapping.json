@@ -1,0 +1,47 @@
+{
+  "mappings": {
+    "properties": {
+      "id":                    { "type": "keyword" },
+      "namespace":             { "type": "keyword" },
+      "content_path":          { "type": "keyword", "index": false },
+      "summary":               { "type": "text", "analyzer": "standard" },
+      "content_text":          { "type": "text", "analyzer": "standard" },
+      "embedding":             { "type": "dense_vector", "dims": 3072, "index": true, "similarity": "cosine" },
+      "memory_type":           { "type": "keyword" },
+      "memory_subtype":        { "type": "keyword" },
+      "content_type":          { "type": "keyword" },
+      "confidence":            { "type": "float" },
+      "confidence_basis":      { "type": "keyword" },
+      "corroborating_sources": { "type": "integer" },
+      "contradicting_sources": { "type": "integer" },
+      "confidence_updated_at": { "type": "keyword" },
+      "source_type":           { "type": "keyword" },
+      "source_id":             { "type": "keyword" },
+      "verification_status":   { "type": "keyword" },
+      "created_at":            { "type": "date" },
+      "updated_at":            { "type": "date" },
+      "accessed_at":           { "type": "date" },
+      "expires_at":            { "type": "date" },
+      "access_count":          { "type": "integer" },
+      "access_count_7d":       { "type": "integer" },
+      "access_count_30d":      { "type": "integer" },
+      "last_access_utility":   { "type": "float" },
+      "decay_score":           { "type": "float" },
+      "importance_score":      { "type": "float" },
+      "superseded_by":         { "type": "keyword" },
+      "tags":                  { "type": "keyword" },
+      "entities":              { "type": "keyword" },
+      "language":              { "type": "keyword" },
+      "trigger_type":          { "type": "keyword" },
+      "trigger_at":            { "type": "date" },
+      "trigger_condition":     { "type": "keyword", "index": false },
+      "is_triggered":          { "type": "boolean" },
+      "is_archived":           { "type": "boolean" },
+      "neighbor_ids":          { "type": "keyword" }
+    }
+  },
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0
+  }
+}

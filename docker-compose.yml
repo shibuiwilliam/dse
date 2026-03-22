@@ -1,0 +1,155 @@
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.17.0
+    container_name: dse-elasticsearch
+    ports:
+      - "9200:9200"
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - xpack.security.http.ssl.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx1g
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsSL http://localhost:9200/_cluster/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  neo4j:
+    image: neo4j:5
+    container_name: dse-neo4j
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+    environment:
+      NEO4J_AUTH: neo4j/password
+      NEO4J_PLUGINS: '["apoc"]'
+      NEO4J_dbms_security_procedures_unrestricted: "apoc.*"
+      NEO4J_dbms_memory_heap_initial__size: "512m"
+      NEO4J_dbms_memory_heap_max__size: "1G"
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: dse-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: temporal
+      POSTGRES_USER: temporal
+      POSTGRES_PASSWORD: temporal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U temporal"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  temporal:
+    image: temporalio/auto-setup:1.24
+    ports:
+      - "7233:7233"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB: postgres12
+      DB_PORT: 5432
+      POSTGRES_USER: temporal
+      POSTGRES_PWD: temporal
+      POSTGRES_SEEDS: postgres
+      DEFAULT_NAMESPACE: dse-local
+
+  temporal-ui:
+    image: temporalio/ui:latest
+    ports:
+      - "8080:8080"
+    depends_on:
+      - temporal
+    environment:
+      TEMPORAL_ADDRESS: temporal:7233
+
+  minio:
+    image: minio/minio:latest
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  redpanda:
+    image: redpandadata/redpanda:latest
+    container_name: dse-redpanda
+    ports:
+      - "9092:9092"
+      - "9644:9644"
+    command:
+      - redpanda
+      - start
+      - --smp=1
+      - --memory=512M
+      - --overprovisioned
+      - --node-id=0
+      - --kafka-addr=PLAINTEXT://0.0.0.0:9092
+      - --advertise-kafka-addr=PLAINTEXT://localhost:9092
+    volumes:
+      - redpanda_data:/var/lib/redpanda/data
+    healthcheck:
+      test: ["CMD", "rpk", "cluster", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redpanda-console:
+    image: redpandadata/console:latest
+    container_name: dse-redpanda-console
+    ports:
+      - "8085:8080"
+    environment:
+      CONFIG_FILEPATH: /tmp/config.yml
+    volumes:
+      - ./infra/redpanda/console-config.yml:/tmp/config.yml:ro
+    depends_on:
+      redpanda:
+        condition: service_healthy
+
+volumes:
+  elasticsearch_data:
+  neo4j_data:
+  neo4j_logs:
+  redis_data:
+  postgres_data:
+  minio_data:
+  redpanda_data:
