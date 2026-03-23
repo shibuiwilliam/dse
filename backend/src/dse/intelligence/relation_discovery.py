@@ -57,17 +57,11 @@ async def find_candidate_pairs(
             with_vecs.append(mem)
 
     pairs: list[dict[str, Any]] = []
-    checked: set[tuple[str, str]] = set()
 
     for i, mem in enumerate(with_vecs):
         vec = mem["embedding"]
 
-        for other in with_vecs[i + 1 : i + 11]:
-            pair_key = tuple(sorted([mem["id"], other["id"]]))
-            if pair_key in checked:
-                continue
-            checked.add(pair_key)
-
+        for other in with_vecs[i + 1 :]:
             other_vec = other["embedding"]
             sim = await embedding_svc.compute_similarity(vec, other_vec)
 

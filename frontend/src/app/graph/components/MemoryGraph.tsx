@@ -46,6 +46,9 @@ export function MemoryGraph({ namespace, selectedNodeId, onNodeSelect, onEdgeSel
     enabled: !!namespace,
   });
 
+  // Random pick — null means show all, string means show only that node's neighborhood
+  const [pickedNodeId, setPickedNodeId] = useState<string | null>(null);
+
   // Edge type filter — all enabled by default
   const [enabledTypes, setEnabledTypes] = useState<Set<string>>(
     () => new Set(ALL_EDGE_TYPES.map((e) => e.type)),
@@ -73,16 +76,43 @@ export function MemoryGraph({ namespace, selectedNodeId, onNodeSelect, onEdgeSel
 
   // Filter edges by enabled types, then find connected node IDs
   const { filteredEdges, connectedNodeIds } = useMemo(() => {
-    const edges = (data?.edges ?? []).filter(
+    let edges = (data?.edges ?? []).filter(
       (e) => e.source && e.target && e.relation_type && enabledTypes.has(e.relation_type),
     );
+
+    // If a node is picked, only show edges touching that node
+    if (pickedNodeId) {
+      edges = edges.filter((e) => e.source === pickedNodeId || e.target === pickedNodeId);
+    }
+
     const ids = new Set<string>();
     for (const e of edges) {
       ids.add(e.source);
       ids.add(e.target);
     }
     return { filteredEdges: edges, connectedNodeIds: ids };
-  }, [data, enabledTypes]);
+  }, [data, enabledTypes, pickedNodeId]);
+
+  // All node IDs that have at least one edge (for random pick pool)
+  const allConnectedNodeIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const e of data?.edges ?? []) {
+      if (e.source && e.target) {
+        ids.add(e.source);
+        ids.add(e.target);
+      }
+    }
+    return ids;
+  }, [data]);
+
+  const handleRandomPick = useCallback(() => {
+    const pool = Array.from(allConnectedNodeIds);
+    if (pool.length === 0) return;
+    const idx = Math.floor(Math.random() * pool.length);
+    setPickedNodeId(pool[idx]);
+    onNodeSelect(null);
+    onEdgeSelect(null);
+  }, [allConnectedNodeIds, onNodeSelect, onEdgeSelect]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
@@ -222,12 +252,33 @@ export function MemoryGraph({ namespace, selectedNodeId, onNodeSelect, onEdgeSel
         />
       </ReactFlow>
 
-      {/* Stats badge */}
-      <div className="absolute right-4 top-4 z-10 rounded-md bg-white/90 px-2.5 py-1.5 text-[10px] text-slate-500 shadow-sm backdrop-blur dark:bg-slate-900/90">
-        {nodes.length} nodes · {edges.length} edges
-        {nodes.length < (data?.nodes ?? []).length && (
-          <span> · {(data?.nodes ?? []).length - nodes.length} hidden</span>
-        )}
+      {/* Stats badge + Random Pick */}
+      <div className="absolute right-4 top-4 z-10 flex items-center gap-2">
+        <div className="flex items-center gap-1.5 rounded-md bg-white/90 px-2.5 py-1.5 shadow-sm backdrop-blur dark:bg-slate-900/90">
+          <button
+            onClick={handleRandomPick}
+            className="rounded bg-violet-100 px-2 py-0.5 text-[10px] font-medium text-violet-700 transition-colors hover:bg-violet-200 dark:bg-violet-900 dark:text-violet-300 dark:hover:bg-violet-800"
+          >
+            Random Pick
+          </button>
+          {pickedNodeId && (
+            <button
+              onClick={() => setPickedNodeId(null)}
+              className="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600 transition-colors hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
+            >
+              Show All
+            </button>
+          )}
+          <span className="ml-1 text-[10px] text-slate-500">
+            {nodes.length} nodes · {edges.length} edges
+            {pickedNodeId && (
+              <span> · picking {pickedNodeId.slice(0, 8)}...</span>
+            )}
+            {!pickedNodeId && nodes.length < (data?.nodes ?? []).length && (
+              <span> · {(data?.nodes ?? []).length - nodes.length} hidden</span>
+            )}
+          </span>
+        </div>
       </div>
 
       <EdgeLegend

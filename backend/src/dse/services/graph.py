@@ -276,6 +276,32 @@ class GraphService:
             result = await session.run(cypher, id=memory_id)
             return [dict(record) async for record in result]
 
+    async def find_memories_by_relation_type(
+        self,
+        namespace: str,
+        relation_type: RelationType,
+        *,
+        limit: int = 100,
+    ) -> list[dict[str, Any]]:
+        """Find all memories that have at least one edge of the given type."""
+        rel = relation_type.value
+        cypher = f"""
+        MATCH (m:Memory)-[r:{rel}]-(other:Memory)
+        WHERE m.namespace = $namespace
+          AND m.is_archived = false
+        RETURN DISTINCT m.id AS id,
+               m.memory_type AS memory_type,
+               m.confidence AS confidence,
+               m.importance AS importance,
+               toString(m.created_at) AS created_at
+        ORDER BY m.importance DESC
+        LIMIT $limit
+        """
+        driver = await self._get_driver()
+        async with driver.session(database=settings.neo4j_database) as session:
+            result = await session.run(cypher, namespace=namespace, limit=limit)
+            return [dict(record) async for record in result]
+
     async def get_subgraph_for_visualization(
         self,
         namespace: str,
@@ -513,6 +539,32 @@ class MockGraphService(GraphService):
 
     async def get_lineage(self, memory_id: str, max_depth: int = 5) -> list[dict[str, Any]]:
         return []
+
+    async def find_memories_by_relation_type(
+        self,
+        namespace: str,
+        relation_type: RelationType,
+        *,
+        limit: int = 100,
+    ) -> list[dict[str, Any]]:
+        matched_ids: set[str] = set()
+        for e in self._edges:
+            if e.relation_type == relation_type:
+                matched_ids.add(e.from_id)
+                matched_ids.add(e.to_id)
+        results: list[dict[str, Any]] = []
+        for nid in matched_ids:
+            node = self._nodes.get(nid)
+            if node and node.get("namespace") == namespace and not node.get("is_archived"):
+                results.append({
+                    "id": nid,
+                    "memory_type": node.get("memory_type", "episodic"),
+                    "confidence": node.get("confidence", 0.5),
+                    "importance": node.get("importance", 0.5),
+                    "created_at": node.get("created_at", ""),
+                })
+        results.sort(key=lambda r: float(r.get("importance", 0)), reverse=True)
+        return results[:limit]
 
     async def get_subgraph_for_visualization(
         self,
