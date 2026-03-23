@@ -137,17 +137,17 @@ export function MemoryDetailPanel({ memoryId, onClose }: Props) {
             {/* Graph neighbors */}
             <Section label={`Relations (${(neighbors.data as unknown[])?.length ?? 0})`}>
               {neighbors.isLoading && <p className="text-[10px] text-slate-400">Loading...</p>}
-              {(neighbors.data as Array<Record<string, unknown>> ?? []).length === 0 && !neighbors.isLoading && (
+              {(neighbors.data ?? []).length === 0 && !neighbors.isLoading && (
                 <p className="text-[10px] text-slate-400">No relations.</p>
               )}
               <ul className="space-y-1">
-                {(neighbors.data as Array<Record<string, unknown>> ?? []).map((n, i) => (
+                {(neighbors.data ?? []).map((n, i) => (
                   <li key={i} className="flex items-center gap-2 text-[11px]">
-                    <span className={`font-medium ${EDGE_COLORS[String(n.relation_type)] ?? "text-slate-500"}`}>
-                      {String(n.relation_type)}
+                    <span className={`font-medium ${EDGE_COLORS[n.relation_type] ?? "text-slate-500"}`}>
+                      {n.relation_type}
                     </span>
                     <span className="truncate font-mono text-[10px] text-slate-400">
-                      {String(n.id).slice(0, 12)}...
+                      {n.id.slice(0, 12)}...
                     </span>
                   </li>
                 ))}
